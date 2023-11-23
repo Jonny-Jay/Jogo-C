@@ -1,16 +1,8 @@
-/**
- * main.h
- * Created on Aug, 23th 2023
- * Author: Tiago Barros
- * Based on "From C to C++ course - 2002"
-*/
-
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 #include "screen.h"
 #include "keyboard.h"
@@ -99,7 +91,7 @@ int main()
             }
           break;
 
-          case 10:
+          case 32:
           enter_press = 1;
           break;
 
@@ -228,14 +220,14 @@ void print_score(int score){
 }
 
 
-//?
+//calcular posição x com relação a matriz no centro
 int getx(int x, int max_x)
 {
   return MAXX/2 - max_x/2 + x;
 }
 
 
-//?
+//calcular a posição y com relação a matriz no centro
 int gety(int y, int max_y)
 {
   return MAXY/2 - max_y/2 + y;
@@ -245,27 +237,19 @@ int gety(int y, int max_y)
 
 //função para printar o menu inicial
 void print_menu(){
-  //screenSetColor(GREEN, BLACK);
-
   screenGotoxy(36, 4);
-  screenSetBold();
-  //screenSetColor(GREEN, BLACK);
   printf("MAHARAJA");
 
   screenGotoxy(36, 8);
-  //screenSetColor(GREEN, BLACK);
   printf("1 PLAYER");
 
   screenGotoxy(36, 10);
-  //screenSetColor(GREEN, BLACK);
   printf("2 PLAYERS");
 
   screenGotoxy(36, 12);
-  //screenSetColor(GREEN, BLACK);
   printf("CONTROLS");
 
   screenGotoxy(36, 14);
-  //screenSetColor(GREEN, BLACK);
   printf("EXIT");
 }
 
@@ -281,7 +265,6 @@ void print_controles()
   while(1) //loop para repetir até o jogador apertar enter
     {
       screenGotoxy(36, 4);
-      screenSetBold();
       printf("MAHARAJA");
 
       screenGotoxy(30, 6);
@@ -316,7 +299,7 @@ void print_controles()
       {
         ch = readch(); //lê a tecla
       }
-      if(ch == 10)
+      if(ch == 32)
       {
         screenClear();
         break; //se for enter, sai do loop, consequentemente da função
@@ -334,7 +317,7 @@ void jogo(){
 
   //inicia o score com 0 e coloca para printar, para deixar a tela do jogo nas cores corretas
   int score = 0; 
-  print_score(score);
+  print_score(score); //foi pra ficar bonito
 
   int cont_casas = 0; //contador de casas andadas
   int cont_goals = 0; //contador de goals já passados
@@ -482,7 +465,7 @@ void jogo(){
     float time = (4000 - (float)getTimeDiff())/1000; //printa o tempo que falta para acabar o goal em contagem regressiva e em segundos
     printf("Timer: %.2f", time);
 
-    if (cont_goals == 3) //se 10 goals passarem, sai do loop, encerrando o jogo
+    if (cont_goals == 10) //se 10 goals passarem, sai do loop, encerrando o jogo
     {
       screenClear();
 
@@ -575,8 +558,6 @@ void jogo_2(){
 
   persona.img = 'x';
   persona.color = WHITE;
-  persona.x = getx(max_x/2, max_x);
-  persona.y = gety(max_y/2, max_y);
 
   goal.img = 'o';
   goal.color = YELLOW;
@@ -588,18 +569,27 @@ void jogo_2(){
 
   for(int i=0; i<2; i++) //repetir o jogo 2 vezes
     {
+      persona.x = getx(max_x/2, max_x);
+      persona.y = gety(max_y/2, max_y);
+      
       screenClear();
       screenGotoxy(35, 12);
       printf("PLAYER %d", i+1);
       screenGotoxy(35, 14);
-      printf("PRESS ANYTHING TO START");
+      printf("PRESS 'ENTER' TO START");
       screenUpdate();
-      while(1){  
-      if(keyhit())  //jogo só inicia se apertar alguma tecla
-      {
-        break;
-      }
-      }
+      while(1) 
+        {
+          if(keyhit() )
+          {
+            ch = readch();
+          }
+          if(ch == 10)
+          {
+            break;
+          }
+        }
+          
 
       screenClear();
       screenUpdate();
@@ -723,7 +713,7 @@ void jogo_2(){
         float time = (4000 - (float)getTimeDiff())/1000;
         printf("Timer: %.2f", time);
 
-        if (cont_goals == 3)
+        if (cont_goals == 10)
         {
           score_a[i] = score; //armazena a pontuação do jogador i no array
           screenClear();
