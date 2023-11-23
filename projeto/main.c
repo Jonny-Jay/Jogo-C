@@ -490,13 +490,6 @@ void jogo(){
   screenGotoxy(43, 8);
   printf("%d ", score);
 
-  screenGotoxy(30, 10);
-  printf("HIGH SCORE:");
-  screenGotoxy(43, 10);
-  printf("                    ");
-  screenGotoxy(43, 10);
-  printf("%d", score);
-
   screenGotoxy(30, 18);
   printf("PRESS 'R' TO RESTART");
 
@@ -525,7 +518,7 @@ void jogo(){
         }
     }
 
-  free_list(head);
+  free_list(head); //limpar a memória alocada
 
   keyboardDestroy();
   screenDestroy();
