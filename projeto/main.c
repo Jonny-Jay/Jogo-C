@@ -10,12 +10,13 @@
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include "screen.h"
 #include "keyboard.h"
 #include "timer.h"
 
-
+// struct lista encadeada (elementos são as casinhas do tabuleiro)
 struct square{
   char quadrado[4];
   int x;
@@ -23,6 +24,7 @@ struct square{
   struct square *next;
 };
 
+// struct de objetos (setinha do menu, persona e goal)
 struct obj{
 char img;
 int x;
@@ -30,10 +32,127 @@ int y;
 screenColor color;
 };
 
+struct square *push(char quadrado[4], int x, int y);
 
+void criar_matriz(struct square **head, int tamanho_x, int tamanho_y);
+
+void print_matriz(struct square *head);
+
+void print_obj(struct obj *obj);
+
+void print_score(int score);
+
+int getx(int x, int max_x);
+
+int gety(int y, int max_y);
+
+void print_menu();
+
+void print_controles();
+
+void jogo();
+
+void jogo_2();
+
+void free_list(struct square *head);
+
+//chama o menu e permite a movimentação do jogador pelo menu
+int main() 
+{
+  screenInit(1);
+  keyboardInit();
+  timerInit(100);
+
+  static int caracter = 0;
+
+  struct obj select;
+  select.img = '>';
+  select.x = 34;
+  select.y = 8;
+
+  print_menu();
+  print_obj(&select);
+
+  while(1)
+    {
+      print_menu();
+      int enter_press = 0;
+      int mov_menu = 1;
+
+      if(keyhit())
+      {
+        caracter = readch();
+      }
+      switch(caracter)  //jogador se movimenta para cima ou baixo e aperta enter para confirmar
+        {
+          case 119: //W
+          if(select.y > 8)
+          {
+            select.y -= 2;
+          }
+          break;
+
+          case 115:
+            if(select.y < 14) //S
+            {
+              select.y += 2;
+            }
+          break;
+
+          case 10:
+          enter_press = 1;
+          break;
+
+          default:
+          mov_menu = 0;
+          break;
+        }
+
+        if(mov_menu)
+        {
+          screenClear();
+          print_menu();
+          print_obj(&select);
+        }
+
+        if(enter_press)   //verifica a opção selecionada
+        {
+          if(select.y == 8)
+          {
+            screenClear();
+            jogo();
+          }
+          else if(select.y == 10)
+          {
+            screenClear();
+            jogo_2();
+          }
+          else if(select.y == 12)
+          {
+            screenClear();
+            print_controles();
+          }
+          else if(select.y == 14)
+          {
+            screenClear();
+            break;
+          }
+        }
+      caracter = 0;
+
+    }
+
+  keyboardDestroy();
+  screenDestroy();
+  timerDestroy();
+
+  return 0;
+}
+
+// função que cria uma nova casinha no tabuleiro e retorna essa casa (elemento da lista)
 struct square* push(char quadrado[4], int x, int y){
-  struct square *newSquare = (struct square*)malloc(sizeof(struct square));
-  strcpy(newSquare->quadrado, quadrado);
+  struct square *newSquare = (struct square*)malloc(sizeof(struct square)); //aloca espaço
+  strcpy(newSquare->quadrado, quadrado); 
   newSquare->x = x;
   newSquare->y = y;
   newSquare->next = NULL;
@@ -42,6 +161,7 @@ struct square* push(char quadrado[4], int x, int y){
 }
 
 
+//função que cria o tabuleiro (lista encadeada) colocando a posição no meio da tela e adicionando cada elemento no final da lista
 void criar_matriz(struct square **head, int tamanho_x, int tamanho_y)
 {
   int i, j;
@@ -50,26 +170,27 @@ void criar_matriz(struct square **head, int tamanho_x, int tamanho_y)
     {
       for(j = 0; j < tamanho_y; j++)
         {
-          int pos_x = MAXX/2 - tamanho_x/2 + j;
-          int pos_y = MAXY/2 - tamanho_y/2 + i;
+          int pos_x = MAXX/2 - tamanho_x/2 + j; //coloca o quadrado no meio da tela, para poder printar o tabuleiro centralizado
+          int pos_y = MAXY/2 - tamanho_y/2 + i; 
           if(*head == NULL)
           {
-            *head = push("_", pos_x, pos_y);
+            *head = push("_", pos_x, pos_y); //se lista estiver vazia, cria o elemento e head aponta para ele
           }
           else
           {
             struct square *n = *head;
-            while (n->next != NULL) {
+            while (n->next != NULL) { //percorre a lista
               n = n->next;
             }
-            struct square* newSquare = push("_", pos_x, pos_y);
-            n->next = newSquare;
+            struct square* newSquare = push("_", pos_x, pos_y); //se não, cria o elemento e adiciona ao final da lista
+            n->next = newSquare; //último elemento aponta para o novo elemento criado
           }
-         
+
         }
     }
 }
 
+//função para printar a matriz (tabuleiro)
 void print_matriz(struct square *head)
 {
   struct square *n = head;
@@ -83,6 +204,8 @@ void print_matriz(struct square *head)
     }
 }
 
+
+//função para printar um objeto (persona, goal, etc)
 void print_obj(struct obj *obj)
 {
   screenSetColor(obj->color, YELLOW);
@@ -90,6 +213,8 @@ void print_obj(struct obj *obj)
   printf("%c", obj->img);
 }
 
+
+//função para printar a pontuação do jogador
 void print_score(int score){
   screenSetColor(GREEN, BLACK);
   screenGotoxy(35, 19);
@@ -102,39 +227,31 @@ void print_score(int score){
   printf("%d ", score);
 }
 
-void print_highscore(int score){
 
-  screenSetColor(GREEN, BLACK);
-  screenGotoxy(30, 21);
-  printf("HIGH SCORE:");
-
-  screenGotoxy(43, 21);
-  printf("                    ");
-
-  screenGotoxy(43, 21);
-  printf("%d", score);
-  
-
-}
-
+//?
 int getx(int x, int max_x)
 {
   return MAXX/2 - max_x/2 + x;
 }
 
+
+//?
 int gety(int y, int max_y)
 {
   return MAXY/2 - max_y/2 + y;
 }
 
+
+
+//função para printar o menu inicial
 void print_menu(){
-  screenSetColor(GREEN, BLACK);
-  
+  //screenSetColor(GREEN, BLACK);
+
   screenGotoxy(36, 4);
   screenSetBold();
   //screenSetColor(GREEN, BLACK);
   printf("MAHARAJA");
-  
+
   screenGotoxy(36, 8);
   //screenSetColor(GREEN, BLACK);
   printf("1 PLAYER");
@@ -142,28 +259,26 @@ void print_menu(){
   screenGotoxy(36, 10);
   //screenSetColor(GREEN, BLACK);
   printf("2 PLAYERS");
-  
+
   screenGotoxy(36, 12);
   //screenSetColor(GREEN, BLACK);
   printf("CONTROLS");
-  
+
   screenGotoxy(36, 14);
-  //screenSetColor(GREEN, BLACK);
-  printf("LEADERBOARD");
-  
-  screenGotoxy(36, 16);
   //screenSetColor(GREEN, BLACK);
   printf("EXIT");
 }
 
+
+//função para printar os controles do jogo
 void print_controles()
 {
   struct obj select;
   select.img = '>';
   select.x = 28;
   select.y = 20;
-  
-  while(1)
+
+  while(1) //loop para repetir até o jogador apertar enter
     {
       screenGotoxy(36, 4);
       screenSetBold();
@@ -188,7 +303,7 @@ void print_controles()
       printf("BE CAREFUL WITH THE TIME");
 
       screenGotoxy(30, 17);
-      printf("GAME ENDS AFTER 20 GOALS");
+      printf("GAME ENDS AFTER 10 GOALS");
 
       screenGotoxy(30, 20);
       printf("BACK");
@@ -197,31 +312,32 @@ void print_controles()
 
       static int ch = 0;
 
-      if(keyhit())
+      if(keyhit()) //detecta se alguma tecla foi pressionada
       {
-        ch = readch();
+        ch = readch(); //lê a tecla
       }
       if(ch == 10)
       {
         screenClear();
-        break;
+        break; //se for enter, sai do loop, consequentemente da função
       }
     }
 }
 
+//função para iniciar o jogo
 void jogo(){
-  srand(time(NULL));
+  srand(time(NULL)); //inicializa o gerador de números aleatórios
 
-  struct square *head = NULL;
+  struct square *head = NULL; //cria o head da lista encadeada
   struct obj persona;
   struct obj goal;
 
-  int score = 0;
+  //inicia o score com 0 e coloca para printar, para deixar a tela do jogo nas cores corretas
+  int score = 0; 
   print_score(score);
-  print_highscore(score);
 
-  int cont_casas = 0;
-  int cont_goals = 0;
+  int cont_casas = 0; //contador de casas andadas
+  int cont_goals = 0; //contador de goals já passados
 
   static int ch = 0;
 
@@ -231,7 +347,7 @@ void jogo(){
 
   persona.img = 'x';
   persona.color = WHITE;
-  persona.x = getx(max_x/2, max_x);
+  persona.x = getx(max_x/2, max_x); //define a posição do jogador para o meio do tabuleiro
   persona.y = gety(max_y/2, max_y);
 
   goal.img = 'o';
@@ -242,94 +358,112 @@ void jogo(){
   keyboardInit();
   timerInit(100);
 
+
+  //cria o tabuleiro e define as colisões
   criar_matriz(&head, max_x, max_y);
   int lim_dir = getx(max_x, max_x); 
   int lim_esq = getx(0, max_x);
   int lim_cim = gety(0, max_y);
   int lim_bax = gety(max_y, max_y);
 
+
+  //gera a posição do goal em algum lugar aleatório do tabuleiro
   goal.x = (rand() % (lim_dir - lim_esq)) + lim_esq;
   goal.y = (rand() % (lim_bax - lim_cim)) + lim_cim;
 
   sleep(1);
 
+
+  //printa tudo
   print_matriz(head);
   print_obj(&persona);
   print_obj(&goal);
   print_score(score);
-  print_highscore(score);
 
-  timerUpdateTimer(4000);
+  timerUpdateTimer(4000); //define o timer como 4 segundos
 
-  while(1)
+  while(1) //while true enquanto o jogo não acabar
   {
     if(keyhit())
     {
       ch = readch();
     }
 
-    int mov = 1;
-    int space_press = 0;
+    int mov = 1; //verifica se o usuário andou
+    int space_press = 0; //verifica se o usuário apertou espaço
 
     switch(ch) //WASD
       {
-        case 119:
-        if((persona.y - 1) >= lim_cim){
-          persona.y -= 1;
-        } 
+        case 119: //w
+        if((persona.y - 1) >= lim_cim){  //verifica se o jogador não está na primeira linha do tabuleiro
+          persona.y --; //atualiza a posição do jogador
+        }
+        else{
+          mov = 0; //evita que pontue se o jogador bater na parede
+        }
         break;
 
         case 115:
-        if((persona.y + 1) < lim_bax){
-          persona.y += 1;
+        if((persona.y + 1) < lim_bax){  //verifica se o jogador não está na última linha do tabuleiro
+          persona.y ++;
         } 
+        else{
+          mov = 0; 
+        }
         break;
 
         case 97:
-        if((persona.x - 1) >= lim_esq){
-          persona.x -= 1;
+        if((persona.x - 1) >= lim_esq){  //verifica se o jogador não está na primeira coluna do tabuleiro
+          persona.x --;
+        }
+        else{
+          mov = 0;
         }
         break;
 
         case 100:
-        if((persona.x + 1) < lim_dir){
-          persona.x += 1;
+        if((persona.x + 1) < lim_dir){  //verifica se o jogador não está na última coluna do tabuleiro
+          persona.x ++;
+        }
+        else{
+          mov = 0;
         }
         break;
 
-        case 32:
+        case 32:  //se o usuário apertar espaço
         space_press = 1;
         break;
 
-        default:
+        default:  //por padrão o jogador não anda
         mov = 0;
         break;
       }
-    if (mov){
+    if (mov){  //se o jogador andou, aumenta o contador de número de casas e atualiza os prints
       cont_casas ++;
       print_matriz(head);
       print_obj(&persona);
       print_obj(&goal);
     }
 
-    if(persona.x == goal.x && persona.y == goal.y && space_press)
+    if(persona.x == goal.x && persona.y == goal.y && space_press)  //se o jogador está em cima do goal e apertou espaço
     {
-      goal.x = (rand() % (lim_dir - lim_esq)) + lim_esq;
+      goal.x = (rand() % (lim_dir - lim_esq)) + lim_esq;  //gera uma nova posição do goal
       goal.y = (rand() % (lim_bax - lim_cim)) + lim_cim;
-      score += cont_casas - 1;
+      score += cont_casas - 1; //aumenta a pontuação pelo número de casas andadas
       print_score(score);
-      print_highscore(score);
-      cont_casas = 0;
-      cont_goals ++;
+      cont_casas = 0; //reseta o número de casas andadas
+      cont_goals ++; //aumenta o número de goals passados
 
+
+      //atualiza os prints
       print_matriz(head);
       print_obj(&persona);
       print_obj(&goal);
 
-      timerUpdateTimer(4000);
+      timerUpdateTimer(4000); //reseta o timer
     }
 
-    if (timerTimeOver())
+    if (timerTimeOver()) //se o tempo acabar, gera uma nova posição e não marca ponto
     {
       goal.x = (rand() % (lim_dir - lim_esq)) + lim_esq;
       goal.y = (rand() % (lim_bax - lim_cim)) + lim_cim;
@@ -343,41 +477,43 @@ void jogo(){
       timerUpdateTimer(4000);
     }
 
-    ch = 0;
+    ch = 0; //reseta a tecla apertada
     screenGotoxy(60, 12);
-    float time = (4000 - (float)getTimeDiff())/1000;
+    float time = (4000 - (float)getTimeDiff())/1000; //printa o tempo que falta para acabar o goal em contagem regressiva e em segundos
     printf("Timer: %.2f", time);
 
-    if (cont_goals == 3)
+    if (cont_goals == 3) //se 10 goals passarem, sai do loop, encerrando o jogo
     {
       screenClear();
-      
+
       break;
 
     }
 
-    screenUpdate();
+    screenUpdate(); //atualiza a tela para printar o que não foi printado
 
   }
 
+
+  //printa a tela de fim de jogo, com pontuação obtida e opção de reiniciar ou sair
   screenSetColor(GREEN, BLACK);
   screenGotoxy(35, 4);
   printf("GAME OVER\n");
-  
+
   screenGotoxy(35, 8);
   printf("SCORE:");
   screenGotoxy(43, 8);
   printf("         ");
   screenGotoxy(43, 8);
   printf("%d ", score);
-  
+
   screenGotoxy(30, 10);
   printf("HIGH SCORE:");
   screenGotoxy(43, 10);
   printf("                    ");
   screenGotoxy(43, 10);
   printf("%d", score);
-  
+
   screenGotoxy(30, 18);
   printf("PRESS 'R' TO RESTART");
 
@@ -387,7 +523,7 @@ void jogo(){
   screenUpdate();
 
   int verif = 1;
-  while(verif)
+  while(verif) 
     {
       if(keyhit())
       {
@@ -396,22 +532,26 @@ void jogo(){
 
       switch(ch)
         {
-          case 114:
+          case 114: //se apertar r, roda novamente o jogo
           jogo();
           break;
 
-          case 10:
+          case 10:  //se apertar enter, sai do loop, consequentemente do jogo, e volta para o menu
           verif = 0;
           break;
         }
     }
 
+  free_list(head);
+
   keyboardDestroy();
   screenDestroy();
   timerDestroy();
-  
+
 }
 
+
+// igual ao jogo 1, mas com 2 jogadores
 void jogo_2(){
   srand(time(NULL));
 
@@ -419,7 +559,7 @@ void jogo_2(){
   struct obj persona;
   struct obj goal;
 
-  int score_a[2] = {0, 0};
+  int score_a[2] = {0, 0}; //array para armazenar as pontuações dos 2 jogadores
 
   int score = 0;
   print_score(score);
@@ -446,13 +586,28 @@ void jogo_2(){
   keyboardInit();
   timerInit(100);
 
-  for(int i=0; i<2; i++)
+  for(int i=0; i<2; i++) //repetir o jogo 2 vezes
     {
-      sleep(1);
+      screenClear();
+      screenGotoxy(35, 12);
+      printf("PLAYER %d", i+1);
+      screenGotoxy(35, 14);
+      printf("PRESS ANYTHING TO START");
+      screenUpdate();
+      while(1){  
+      if(keyhit())  //jogo só inicia se apertar alguma tecla
+      {
+        break;
+      }
+      }
+
+      screenClear();
+      screenUpdate();
+
       score = 0;
       cont_casas = 0;
       cont_goals = 0;
-      
+
       criar_matriz(&head, max_x, max_y);
       int lim_dir = getx(max_x, max_x); 
       int lim_esq = getx(0, max_x);
@@ -471,7 +626,7 @@ void jogo_2(){
 
       while(1)
       {
-        
+
         if(keyhit())
         {
           ch = readch();
@@ -485,24 +640,36 @@ void jogo_2(){
             case 119:
             if((persona.y - 1) >= lim_cim){
               persona.y -= 1;
-            } 
+            }
+            else{
+              mov = 0;
+            }
             break;
 
             case 115:
             if((persona.y + 1) < lim_bax){
               persona.y += 1;
-            } 
+            }
+            else{
+              mov = 0;
+            }
             break;
 
             case 97:
             if((persona.x - 1) >= lim_esq){
               persona.x -= 1;
             }
+            else{
+              mov = 0;
+            }
             break;
 
             case 100:
             if((persona.x + 1) < lim_dir){
               persona.x += 1;
+            }
+            else{
+              mov = 0;
             }
             break;
 
@@ -526,7 +693,6 @@ void jogo_2(){
           goal.x = (rand() % (lim_dir - lim_esq)) + lim_esq;
           goal.y = (rand() % (lim_bax - lim_cim)) + lim_cim;
           score += cont_casas - 1;
-          score_a[i] = score;
           print_score(score);
           cont_casas = 0;
           cont_goals ++;
@@ -559,6 +725,7 @@ void jogo_2(){
 
         if (cont_goals == 3)
         {
+          score_a[i] = score; //armazena a pontuação do jogador i no array
           screenClear();
 
           break;
@@ -570,6 +737,8 @@ void jogo_2(){
       }
 
     }
+
+  //printa a tela de fim de jogo e as pontuações dos 2 jogadores
   screenSetColor(GREEN, BLACK);
   screenGotoxy(35, 4);
   printf("GAME OVER\n");
@@ -587,17 +756,17 @@ void jogo_2(){
   screenGotoxy(30, 14);
   printf("WINNER:");
   screenGotoxy(39, 14);
-  if(score_a[0] > score_a[1])
+  if(score_a[0] > score_a[1]) //se jogador 1 tiver mais pontos, ele vence
   {
     printf("PLAYER 1");
   }
-  else if(score_a[0] < score_a[1])
+  else if(score_a[0] < score_a[1]) //se jogador 2 tiver mais pontos, ele vence
   {
     printf("PLAYER 2");
   }
-  else
+  else  //os 2 tem a mesma quantidade de pontos
   {
-    printf("   DRAW");
+    printf("DRAW");
   }
 
   screenGotoxy(30, 20);
@@ -624,11 +793,13 @@ void jogo_2(){
 
           case 10:
           verif = 0;
-          break; //te amo jota  vem cá
+          break;
         }
     }
 
-  
+  free_list(head);
+
+
 
   keyboardDestroy();
   screenDestroy();
@@ -636,101 +807,14 @@ void jogo_2(){
 
 }
 
-int main() 
-{
-  screenInit(1);
-  keyboardInit();
-  timerInit(100);
 
-  static int caracter = 0;
+void free_list(struct square *head) {
+    struct square *n = head;
+    struct square *next;
 
-  struct obj select;
-  select.img = '>';
-  select.x = 35;
-  select.y = 8;
-
-  print_menu();
-  print_obj(&select);
-
-  while(1)
-    {
-      print_menu();
-      int enter_press = 0;
-      int mov_menu = 1;
-      
-      if(keyhit())
-      {
-        caracter = readch();
-      }
-      switch(caracter)
-        {
-          case 119: //W
-          if(select.y > 8)
-          {
-            select.y -= 2;
-          }
-          break;
-
-          case 115:
-            if(select.y < 16) //S
-            {
-              select.y += 2;
-            }
-          break;
-
-          case 10:
-          enter_press = 1;
-          break;
-
-          default:
-          mov_menu = 0;
-          break;
-        }//oi jotinho boa noite
-
-        if(mov_menu)
-        {
-          screenClear();
-          print_menu();
-          print_obj(&select);
-        }
-      
-        if(enter_press)
-        {
-          if(select.y == 8)
-          {
-            screenClear();
-            jogo();
-          }
-          else if(select.y == 10)
-          {
-            screenClear();
-            jogo_2();
-          }
-          else if(select.y == 12)
-          {
-            screenClear();
-            print_controles();
-          }
-          else if(select.y == 14)
-          {
-            screenClear();
-            //leaderboard
-          }
-          else if(select.y == 16)
-          {
-            screenClear();
-            exit(1);
-          }
-        }
-      caracter = 0;
-      
+    while (n != NULL) {
+        next = n->next;
+        free(n);
+        n = next;
     }
-
-  keyboardDestroy();
-  screenDestroy();
-  timerDestroy();
-
-  return 0;
 }
-
-
